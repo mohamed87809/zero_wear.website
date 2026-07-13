@@ -1,6 +1,7 @@
 // src/pages/ProductDetails.jsx
 
 import { Link, useParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 
 import ProductGallery from '../components/product/ProductGallery.jsx';
@@ -8,7 +9,12 @@ import ProductInfo from '../components/product/ProductInfo.jsx';
 import ProductTabs from '../components/product/ProductTabs.jsx';
 import ProductCard from '../components/product/ProductCard.jsx';
 import Button from '../components/ui/Button.jsx';
+import Loading from '../components/ui/Loading.jsx';
 
+import {
+  selectAllProducts,
+  selectProductsStatus,
+} from '../redux/features/productsSlice.js';
 import {
   getProductById,
   getRelatedProducts,
@@ -16,7 +22,17 @@ import {
 
 function ProductDetails() {
   const { id } = useParams();
-  const product = getProductById(id);
+  const products = useSelector(selectAllProducts);
+  const status = useSelector(selectProductsStatus);
+
+  const product = getProductById(products, id);
+
+  // Products load asynchronously from Firestore now, so a missing product
+  // could simply mean the fetch hasn't resolved yet — show a loading state
+  // instead of a false "not found" while the initial fetch is in flight.
+  if (status === 'loading' && !product) {
+    return <Loading label="Loading product..." fullScreen />;
+  }
 
   if (!product) {
     return (
@@ -35,22 +51,19 @@ function ProductDetails() {
     );
   }
 
-  const relatedProducts = getRelatedProducts(product.id, 4);
+  const relatedProducts = getRelatedProducts(products, product.id, 4);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-      {/* Gallery + Info */}
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
         <ProductGallery images={product.images} productName={product.name} />
         <ProductInfo product={product} />
       </div>
 
-      {/* Tabs */}
       <div className="mt-14 sm:mt-16 lg:mt-20">
         <ProductTabs product={product} />
       </div>
 
-      {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div className="mt-16 sm:mt-20 lg:mt-24">
           <h2 className="mb-8 text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl">

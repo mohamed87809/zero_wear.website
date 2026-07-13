@@ -1,14 +1,25 @@
 // src/components/home/FeaturedProducts.jsx
 
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 
 import ProductCard from '../product/ProductCard.jsx';
+import { ProductCardSkeleton } from '../ui/Loading.jsx';
+
+import {
+  selectAllProducts,
+  selectProductsStatus,
+} from '../../redux/features/productsSlice.js';
 import { getFeaturedProducts } from '../../utils/productHelpers.js';
 
 function FeaturedProducts() {
-  const featuredProducts = getFeaturedProducts();
+  const products = useSelector(selectAllProducts);
+  const status = useSelector(selectProductsStatus);
+
+  const featuredProducts = getFeaturedProducts(products);
+  const isLoading = status === 'loading' && products.length === 0;
 
   return (
     <section className="bg-[#f9fafb] py-16 sm:py-20 lg:py-24">
@@ -35,7 +46,13 @@ function FeaturedProducts() {
           </Link>
         </div>
 
-        {featuredProducts.length > 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 lg:gap-8">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : featuredProducts.length > 0 ? (
           <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 lg:gap-8">
             {featuredProducts.map((product, index) => (
               <motion.div

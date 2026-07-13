@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, AlertTriangle } from 'lucide-react';
 
 import ProductCard from '../components/product/ProductCard.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -12,8 +12,10 @@ import { ProductCardSkeleton } from '../components/ui/Loading.jsx';
 
 import { categories } from '../data/products.js';
 import {
+  fetchProducts,
   selectAllProducts,
   selectProductsStatus,
+  selectProductsError,
   selectFilters,
   setCategory,
   setSearchTerm,
@@ -27,6 +29,7 @@ function Products() {
 
   const allProducts = useSelector(selectAllProducts);
   const status = useSelector(selectProductsStatus);
+  const error = useSelector(selectProductsError);
   const filters = useSelector(selectFilters);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -68,7 +71,8 @@ function Products() {
     return result;
   }, [allProducts, filters]);
 
-  const isLoading = status === 'loading';
+  const isLoading = status === 'loading' && allProducts.length === 0;
+  const hasError = status === 'failed' && allProducts.length === 0;
   const hasActiveFilters =
     filters.category !== 'All' || filters.searchTerm.trim() !== '';
 
@@ -84,6 +88,23 @@ function Products() {
           {filteredProducts.length !== 1 ? 's' : ''} available
         </p>
       </div>
+
+      {hasError && (
+        <div className="mb-8 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+          <AlertTriangle size={18} className="shrink-0 text-red-600" />
+          <p className="text-sm text-red-700">
+            {error || 'Failed to load products. Please try again.'}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            onClick={() => dispatch(fetchProducts())}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

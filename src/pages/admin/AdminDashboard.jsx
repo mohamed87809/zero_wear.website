@@ -1,6 +1,7 @@
 // src/pages/admin/AdminDashboard.jsx
 
 import { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import {
   ShoppingBag,
@@ -14,7 +15,11 @@ import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 
 import { getAllOrders } from '../../utils/localOrdersStorage.js';
-import { getAllProducts } from '../../utils/localProductsStorage.js';
+import {
+  fetchProducts,
+  selectAllProducts,
+  selectProductsStatus,
+} from '../../redux/features/productsSlice.js';
 
 const statusVariant = {
   Pending: 'default',
@@ -37,20 +42,21 @@ function formatDate(isoString) {
 }
 
 function AdminDashboard() {
-  const [orders, setOrders] = useState([]);
-  const [products, setProducts] = useState([]);
+  const dispatch = useDispatch();
 
-  // Written as a standalone loader function so it can easily become
-  // async (awaiting real API calls) later without touching the rest
-  // of this component.
-  const loadData = () => {
-    setOrders(getAllOrders());
-    setProducts(getAllProducts());
-  };
+  // Orders remain on localStorage — untouched by this migration step.
+  const [orders, setOrders] = useState([]);
+
+  // Products now come from Firestore via Redux.
+  const products = useSelector(selectAllProducts);
+  const productsStatus = useSelector(selectProductsStatus);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    setOrders(getAllOrders());
+    if (productsStatus === 'idle') {
+      dispatch(fetchProducts());
+    }
+  }, [dispatch, productsStatus]);
 
   const stats = useMemo(() => {
     const totalOrders = orders.length;

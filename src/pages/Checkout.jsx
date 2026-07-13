@@ -8,10 +8,9 @@ import OrderSummary from '../components/checkout/OrderSummary.jsx';
 
 import { selectCartItems, selectCartTotal, clearCart } from '../redux/features/cartSlice.js';
 import { placeOrder } from '../redux/features/ordersSlice.js';
-
+import { createOrder } from '../utils/localOrdersStorage.js';
 const FREE_SHIPPING_THRESHOLD = 5000;
 const FLAT_SHIPPING_FEE = 500;
-
 function Checkout() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -25,7 +24,7 @@ function Checkout() {
     const shippingFee =
       subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
     const total = subtotal + shippingFee;
-
+     // Persist to localStorage (drives the Admin Dashboard's Orders page)
     dispatch(
       placeOrder({
         items: cartItems,
@@ -33,6 +32,16 @@ function Checkout() {
         total,
       })
     );
+    dispatch(clearCart());
+    navigate('/order-success');
+   
+   // Persist to localStorage (drives the Admin Dashboard's Orders page)
+    createOrder({
+      items: cartItems,
+      customerInfo,
+      total,
+    });
+
     dispatch(clearCart());
     navigate('/order-success');
   };
