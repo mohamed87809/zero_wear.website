@@ -6,7 +6,7 @@ import { Lock } from 'lucide-react';
 
 import Input from '../../components/ui/Input.jsx';
 import Button from '../../components/ui/Button.jsx';
-import { login, isAuthenticated } from '../../utils/adminAuth.js';
+import { login, isAuthenticated } from '../../utils/adminauth.js';
 
 function AdminLogin() {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 // src/services/authService.js
 //
 // Firebase Authentication service for the Admin Dashboard. Mirrors
-// src/utils/adminAuth.js's function names/shapes (login, logout,
+// src/utils/adminauth.js's function names/shapes (login, logout,
 // isAuthenticated, getCurrentAdmin) so that ProtectedRoute.jsx and
 // AdminLogin.jsx can later swap to this service with minimal changes.
 // Not yet connected to any page — standalone until wired in later.

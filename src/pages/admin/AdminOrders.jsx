@@ -1,18 +1,19 @@
 // src/pages/admin/AdminOrders.jsx
 
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, Trash2, Check, X as XIcon } from 'lucide-react';
+import { Eye, Trash2, X as XIcon, AlertTriangle } from 'lucide-react';
 
 import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Modal from '../../components/ui/Modal.jsx';
+import Loading, { Spinner } from '../../components/ui/Loading.jsx';
 
 import {
-  getAllOrders,
+  getOrders,
   updateOrderStatus,
   deleteOrder,
-} from '../../utils/localOrdersStorage.js';
+} from '../../services/ordersService.js';
 
 const statusVariant = {
   Pending: 'default',
@@ -52,13 +53,27 @@ function getAvailableActions(currentStatus) {
 
 function AdminOrders() {
   const [orders, setOrders] = useState([]);
+  const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'succeeded' | 'failed'
+  const [loadError, setLoadError] = useState('');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewingOrder, setViewingOrder] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [busyOrderId, setBusyOrderId] = useState(null);
+  const [actionError, setActionError] = useState('');
 
-  const loadOrders = () => {
-    setOrders(getAllOrders());
+  const loadOrders = async () => {
+    setStatus('loading');
+    setLoadError('');
+    try {
+      const data = await getOrders();
+      setOrders(data);
+      setStatus('succeeded');
+    } catch (error) {
+      setStatus('failed');
+      setLoadError(error?.message || 'Failed to load orders.');
+    }
   };
 
   useEffect(() => {
@@ -84,21 +99,36 @@ function AdminOrders() {
     return result;
   }, [orders, statusFilter, searchTerm]);
 
-  const handleStatusChange = (orderId, newStatus) => {
-    updateOrderStatus(orderId, newStatus);
-    loadOrders();
+  const handleStatusChange = async (orderId, newStatus) => {
+    setActionError('');
+    setBusyOrderId(orderId);
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      await loadOrders();
+    } catch (error) {
+      setActionError(error?.message || 'Failed to update order status.');
+    }
+    setBusyOrderId(null);
   };
 
-  const handleCancel = (orderId) => {
-    updateOrderStatus(orderId, 'Cancelled');
-    loadOrders();
+  const handleCancel = async (orderId) => {
+    await handleStatusChange(orderId, 'Cancelled');
   };
 
-  const handleDelete = (orderId) => {
-    deleteOrder(orderId);
-    setConfirmDeleteId(null);
-    loadOrders();
+  const handleDelete = async (orderId) => {
+    setActionError('');
+    setBusyOrderId(orderId);
+    try {
+      await deleteOrder(orderId);
+      setConfirmDeleteId(null);
+      await loadOrders();
+    } catch (error) {
+      setActionError(error?.message || 'Failed to delete order.');
+    }
+    setBusyOrderId(null);
   };
+
+  const isInitialLoading = status === 'loading' && orders.length === 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -110,6 +140,13 @@ function AdminOrders() {
           {orders.length} total order{orders.length !== 1 ? 's' : ''}
         </p>
       </div>
+
+      {actionError && (
+        <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+          <AlertTriangle size={18} className="shrink-0 text-red-600" />
+          <p className="text-sm text-red-700">{actionError}</p>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -136,125 +173,157 @@ function AdminOrders() {
       </div>
 
       {/* Orders table */}
-      <Card padding="none" hoverEffect={false} className="overflow-hidden">
-        {filteredOrders.length === 0 ? (
-          <p className="px-6 py-14 text-center text-sm text-[#374151]">
-            No orders found.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-[#e5e7eb] text-xs font-semibold uppercase tracking-wide text-[#374151]/70">
-                  <th className="px-6 py-3">Order ID</th>
-                  <th className="px-6 py-3">Customer</th>
-                  <th className="px-6 py-3">Date</th>
-                  <th className="px-6 py-3">Total</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => {
-                  const availableActions = getAvailableActions(order.status);
-                  const isConfirmingDelete = confirmDeleteId === order.id;
-
-                  return (
-                    <tr
-                      key={order.id}
-                      className="border-b border-[#e5e7eb] text-sm last:border-0"
-                    >
-                      <td className="px-6 py-4 font-medium text-[#111827]">
-                        {order.id}
-                      </td>
-                      <td className="px-6 py-4 text-[#374151]">
-                        {order.customerName}
-                      </td>
-                      <td className="px-6 py-4 text-[#374151]">
-                        {formatDate(order.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 font-medium text-[#111827]">
-                        {formatPrice(order.total)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={statusVariant[order.status] || 'default'}>
-                          {order.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        {isConfirmingDelete ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <span className="text-xs text-[#374151]">
-                              Delete this order?
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(order.id)}
-                              className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
-                            >
-                              Yes
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="rounded-lg border border-[#e5e7eb] px-2.5 py-1 text-xs font-semibold text-[#111827] hover:bg-[#f9fafb]"
-                            >
-                              No
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setViewingOrder(order)}
-                              aria-label="View details"
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#374151] hover:bg-[#f9fafb] hover:text-[#111827]"
-                            >
-                              <Eye size={16} />
-                            </button>
-
-                            {availableActions.map((status) => (
-                              <button
-                                key={status}
-                                type="button"
-                                onClick={() => handleStatusChange(order.id, status)}
-                                className="rounded-lg border border-[#e5e7eb] px-2.5 py-1.5 text-xs font-medium text-[#111827] transition-colors hover:bg-[#f9fafb]"
-                              >
-                                Mark {status}
-                              </button>
-                            ))}
-
-                            {order.status !== 'Cancelled' &&
-                              order.status !== 'Delivered' && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCancel(order.id)}
-                                  aria-label="Cancel order"
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
-                                >
-                                  <XIcon size={16} />
-                                </button>
-                              )}
-
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(order.id)}
-                              aria-label="Delete order"
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#374151] hover:bg-red-50 hover:text-red-600"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {isInitialLoading ? (
+        <Card padding="none" hoverEffect={false}>
+          <Loading label="Loading orders..." />
+        </Card>
+      ) : status === 'failed' && orders.length === 0 ? (
+        <Card
+          padding="lg"
+          hoverEffect={false}
+          className="flex flex-col items-center gap-4 text-center"
+        >
+          <AlertTriangle size={32} className="text-red-500" />
+          <div>
+            <p className="text-base font-semibold text-[#111827]">
+              Failed to load orders
+            </p>
+            <p className="mt-1 text-sm text-[#374151]">
+              {loadError || 'Something went wrong. Please try again.'}
+            </p>
           </div>
-        )}
-      </Card>
+          <Button variant="primary" onClick={loadOrders}>
+            Retry
+          </Button>
+        </Card>
+      ) : (
+        <Card padding="none" hoverEffect={false} className="overflow-hidden">
+          {filteredOrders.length === 0 ? (
+            <p className="px-6 py-14 text-center text-sm text-[#374151]">
+              No orders found.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-[#e5e7eb] text-xs font-semibold uppercase tracking-wide text-[#374151]/70">
+                    <th className="px-6 py-3">Order ID</th>
+                    <th className="px-6 py-3">Customer</th>
+                    <th className="px-6 py-3">Date</th>
+                    <th className="px-6 py-3">Total</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.map((order) => {
+                    const availableActions = getAvailableActions(order.status);
+                    const isConfirmingDelete = confirmDeleteId === order.id;
+                    const isBusy = busyOrderId === order.id;
+
+                    return (
+                      <tr
+                        key={order.id}
+                        className="border-b border-[#e5e7eb] text-sm last:border-0"
+                      >
+                        <td className="px-6 py-4 font-medium text-[#111827]">
+                          {order.id}
+                        </td>
+                        <td className="px-6 py-4 text-[#374151]">
+                          {order.customerName}
+                        </td>
+                        <td className="px-6 py-4 text-[#374151]">
+                          {formatDate(order.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 font-medium text-[#111827]">
+                          {formatPrice(order.total)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={statusVariant[order.status] || 'default'}>
+                            {order.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          {isBusy ? (
+                            <div className="flex items-center justify-end">
+                              <Spinner size="sm" />
+                            </div>
+                          ) : isConfirmingDelete ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="text-xs text-[#374151]">
+                                Delete this order?
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(order.id)}
+                                className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                              >
+                                Yes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="rounded-lg border border-[#e5e7eb] px-2.5 py-1 text-xs font-semibold text-[#111827] hover:bg-[#f9fafb]"
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setViewingOrder(order)}
+                                aria-label="View details"
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#374151] hover:bg-[#f9fafb] hover:text-[#111827]"
+                              >
+                                <Eye size={16} />
+                              </button>
+
+                              {availableActions.map((newStatus) => (
+                                <button
+                                  key={newStatus}
+                                  type="button"
+                                  onClick={() =>
+                                    handleStatusChange(order.id, newStatus)
+                                  }
+                                  className="rounded-lg border border-[#e5e7eb] px-2.5 py-1.5 text-xs font-medium text-[#111827] transition-colors hover:bg-[#f9fafb]"
+                                >
+                                  Mark {newStatus}
+                                </button>
+                              ))}
+
+                              {order.status !== 'Cancelled' &&
+                                order.status !== 'Delivered' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancel(order.id)}
+                                    aria-label="Cancel order"
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
+                                  >
+                                    <XIcon size={16} />
+                                  </button>
+                                )}
+
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(order.id)}
+                                aria-label="Delete order"
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#374151] hover:bg-red-50 hover:text-red-600"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* View details modal */}
       <Modal

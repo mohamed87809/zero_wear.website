@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { logout } from '../../utils/adminAuth.js';
+import { logout } from '../../utils/adminauth.js';
 
 const navItems = [
   { label: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true },

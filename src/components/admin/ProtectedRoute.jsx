@@ -2,7 +2,7 @@
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
-import { isAuthenticated } from '../../utils/adminAuth.js';
+import { isAuthenticated } from '../../utils/adminauth.js';
 
 function ProtectedRoute() {
   const location = useLocation();

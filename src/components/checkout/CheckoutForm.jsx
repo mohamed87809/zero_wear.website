@@ -18,7 +18,7 @@ const wilayas = [
   'Naâma', 'Aïn Témouchent', 'Ghardaïa', 'Relizane',
 ];
 
-function CheckoutForm({ onValidSubmit }) {
+function CheckoutForm({ onValidSubmit, isSubmittingOrder = false }) {
   const dispatch = useDispatch();
 
   const {
@@ -36,10 +36,12 @@ function CheckoutForm({ onValidSubmit }) {
     mode: 'onBlur',
   });
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     dispatch(setCustomerInfo(data));
-    onValidSubmit?.(data);
+    await onValidSubmit?.(data);
   };
+
+  const isLoading = isSubmitting || isSubmittingOrder;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
@@ -136,7 +138,7 @@ function CheckoutForm({ onValidSubmit }) {
         variant="primary"
         size="lg"
         fullWidth
-        isLoading={isSubmitting}
+        isLoading={isLoading}
         className="mt-2"
       >
         Continue to Confirm Order

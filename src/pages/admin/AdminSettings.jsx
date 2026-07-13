@@ -6,7 +6,7 @@ import { UserCircle, Store, Bell, LogOut } from 'lucide-react';
 import Card from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
 
-import { getCurrentAdmin, logout } from '../../utils/adminAuth.js';
+import { getCurrentAdmin, logout } from '../../utils/adminauth.js';
 
 function formatDateTime(isoString) {
   if (!isoString) return '—';

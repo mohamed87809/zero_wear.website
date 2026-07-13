@@ -13,8 +13,9 @@ import {
 
 import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
+import { Spinner } from '../../components/ui/Loading.jsx';
 
-import { getAllOrders } from '../../utils/localOrdersStorage.js';
+import { getOrders } from '../../services/ordersService.js';
 import {
   fetchProducts,
   selectAllProducts,
@@ -44,15 +45,26 @@ function formatDate(isoString) {
 function AdminDashboard() {
   const dispatch = useDispatch();
 
-  // Orders remain on localStorage — untouched by this migration step.
   const [orders, setOrders] = useState([]);
+  const [ordersStatus, setOrdersStatus] = useState('idle'); // 'idle' | 'loading' | 'succeeded' | 'failed'
 
-  // Products now come from Firestore via Redux.
   const products = useSelector(selectAllProducts);
   const productsStatus = useSelector(selectProductsStatus);
 
   useEffect(() => {
-    setOrders(getAllOrders());
+    const loadOrders = async () => {
+      setOrdersStatus('loading');
+      try {
+        const data = await getOrders();
+        setOrders(data);
+        setOrdersStatus('succeeded');
+      } catch {
+        setOrdersStatus('failed');
+      }
+    };
+
+    loadOrders();
+
     if (productsStatus === 'idle') {
       dispatch(fetchProducts());
     }
@@ -77,6 +89,7 @@ function AdminDashboard() {
   }, [orders, products]);
 
   const recentOrders = orders.slice(0, 5);
+  const isLoadingOrders = ordersStatus === 'loading' && orders.length === 0;
 
   const statCards = [
     {
@@ -123,9 +136,15 @@ function AdminDashboard() {
                   <p className="text-xs font-medium text-[#374151]">
                     {stat.label}
                   </p>
-                  <p className="mt-1 text-2xl font-bold text-[#111827]">
-                    {stat.value}
-                  </p>
+                  {isLoadingOrders && stat.label !== 'Total Products' ? (
+                    <div className="mt-2">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-2xl font-bold text-[#111827]">
+                      {stat.value}
+                    </p>
+                  )}
                 </div>
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2563eb]/10 text-[#2563eb]">
                   <Icon size={18} />
@@ -168,7 +187,11 @@ function AdminDashboard() {
           </Link>
         </div>
 
-        {recentOrders.length === 0 ? (
+        {isLoadingOrders ? (
+          <div className="flex items-center justify-center px-6 py-10">
+            <Spinner size="md" />
+          </div>
+        ) : recentOrders.length === 0 ? (
           <p className="px-6 py-10 text-center text-sm text-[#374151]">
             No orders yet.
           </p>

@@ -1,4 +1,4 @@
-// src/utils/adminAuth.js
+// src/utils/adminauth.js
 
 const AUTH_STORAGE_KEY = 'zw_admin_auth';
 
