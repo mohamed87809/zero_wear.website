@@ -6,7 +6,8 @@ import { Lock } from 'lucide-react';
 
 import Input from '../../components/ui/Input.jsx';
 import Button from '../../components/ui/Button.jsx';
-import { login, isAuthenticated } from '../../utils/adminauth.js';
+import { Spinner } from '../../components/ui/Loading.jsx';
+import { login, onAuthStateChange } from '../../services/authService.js';
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -17,13 +18,22 @@ function AdminLogin() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Checking whether an admin is already signed in (async, since Firebase
+  // Auth resolves asynchronously) before showing the login form at all.
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
   useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/admin', { replace: true });
-    }
+    const unsubscribe = onAuthStateChange((user) => {
+      setIsCheckingSession(false);
+      if (user) {
+        navigate('/admin', { replace: true });
+      }
+    });
+
+    return () => unsubscribe();
   }, [navigate]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -33,7 +43,7 @@ function AdminLogin() {
     }
 
     setIsSubmitting(true);
-    const result = login(email, password);
+    const result = await login(email, password);
     setIsSubmitting(false);
 
     if (result.success) {
@@ -43,6 +53,14 @@ function AdminLogin() {
       setError(result.error);
     }
   };
+
+  if (isCheckingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f9fafb]">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f9fafb] px-4">

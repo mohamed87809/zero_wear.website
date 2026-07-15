@@ -1,31 +1,37 @@
 // src/pages/admin/AdminSettings.jsx
 
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserCircle, Store, Bell, LogOut } from 'lucide-react';
 
 import Card from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
-
-import { getCurrentAdmin, logout } from '../../utils/adminauth.js';
-
-function formatDateTime(isoString) {
-  if (!isoString) return '—';
-  return new Date(isoString).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
+import { Spinner } from '../../components/ui/Loading.jsx';
+import { logout, onAuthStateChange } from '../../services/authService.js';
 
 function AdminSettings() {
   const navigate = useNavigate();
-  const admin = getCurrentAdmin();
+  const [admin, setAdmin] = useState(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/admin/login', { replace: true });
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      setAdmin(user);
+      setIsCheckingSession(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      navigate('/admin/login', { replace: true });
+    } catch {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -41,23 +47,29 @@ function AdminSettings() {
 
       {/* Account info */}
       <Card padding="lg" hoverEffect={false} className="flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2563eb]/10 text-[#2563eb]">
-            <UserCircle size={22} />
+        {isCheckingSession ? (
+          <div className="flex items-center gap-3">
+            <Spinner size="sm" />
+            <p className="text-sm text-[#374151]">Loading account info...</p>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-[#111827]">
-              {admin?.email || 'Unknown'}
-            </p>
-            <p className="text-xs text-[#374151]/70">
-              Logged in since {formatDateTime(admin?.loggedInAt)}
-            </p>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2563eb]/10 text-[#2563eb]">
+              <UserCircle size={22} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#111827]">
+                {admin?.email || 'Unknown'}
+              </p>
+              <p className="text-xs text-[#374151]/70">Signed in via Firebase</p>
+            </div>
           </div>
-        </div>
+        )}
 
         <Button
           variant="outline"
           onClick={handleLogout}
+          isLoading={isLoggingOut}
           className="w-fit gap-2"
         >
           <LogOut size={16} />

@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper: current admin-detection strategy ──────────────────────
+    // Today, the only way to be an authenticated Firebase user in this
+    // app is to be the single hardcoded admin account (no public sign-up
+    // flow exists in the frontend). This is intentionally simple and
+    // requires no extra setup.
+    //
+    // UPGRADE PATH: once multiple admins or any customer-facing auth
+    // exists, change this single line to:
+    //   return request.auth != null && request.auth.token.admin == true;
+    // (after configuring Custom Claims via the Firebase Admin SDK — see
+    // the project documentation for the setup script).
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // ── Products ────────────────────────────────────────────────────
+    // Public storefront needs to read the catalog with no login at all.
+    // Only the authenticated admin can create, edit, or delete products.
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── Orders ──────────────────────────────────────────────────────
+    // Guest checkout must be able to create an order with NO login.
+    // Nobody but the admin may ever read, update, or delete an order —
+    // this prevents a customer (or anyone) from viewing other people's
+    // orders, or tampering with status/total after the fact.
+    match /orders/{orderId} {
+      allow create: if isValidNewOrder(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    function isValidNewOrder(data) {
+      return data.keys().hasAll([
+        'customerName', 'phone', 'wilaya', 'commune', 'address',
+        'items', 'total', 'status', 'createdAt'
+      ])
+      && data.customerName is string && data.customerName.size() > 0
+      && data.phone is string && data.phone.size() > 0
+      && data.wilaya is string && data.wilaya.size() > 0
+      && data.commune is string && data.commune.size() > 0
+      && data.address is string && data.address.size() > 0
+      && data.items is list && data.items.size() > 0
+      && data.total is number && data.total > 0
+      && data.status == 'Pending'
+      && data.createdAt is string;
+    }
+
+    // ── Default deny ────────────────────────────────────────────────
+    // Any collection not explicitly matched above is fully locked down.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

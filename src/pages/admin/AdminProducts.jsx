@@ -74,6 +74,7 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+    console.log("HANDLE SUBMIT");
 
     const payload = {
       name: form.name.trim(),
@@ -96,7 +97,6 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
         .map((url) => url.trim())
         .filter(Boolean),
     };
-
     setIsSaving(true);
 
     try {
@@ -105,7 +105,9 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
           updateProductThunk({ id: editingProduct.id, updates: payload })
         ).unwrap();
       } else {
+        console.log("Before dispatch");
         await dispatch(createProductThunk(payload)).unwrap();
+        console.log("after dispatch");
       }
       setIsSaving(false);
       onClose();
@@ -123,8 +125,8 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
       onClose={onClose}
       title={editingProduct ? 'Edit Product' : 'Add Product'}
       maxWidth="lg"
-    >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    ><form
+       onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
             label="Product Name"

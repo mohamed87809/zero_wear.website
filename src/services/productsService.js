@@ -9,6 +9,7 @@
 // NOT YET CONNECTED to Redux or any page — this file is standalone
 // until a later migration step wires it in.
 
+
 import {
   collection,
   doc,
@@ -19,7 +20,7 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 
-import { db } from '../firebase/firebase.js';
+import { db , auth } from '../firebase/firebase.js';
 
 const PRODUCTS_COLLECTION = 'products';
 
@@ -53,6 +54,7 @@ export async function getProduct(id) {
  * version, which generated `zw-${Date.now()}` client-side).
  */
 export async function createProduct(productData) {
+  console.log("Current User:", auth.currentUser);
   const payload = {
     isFeatured: false,
     rating: 0,

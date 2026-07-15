@@ -1,5 +1,6 @@
 // src/components/admin/AdminSidebar.jsx
 
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -12,7 +13,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { logout } from '../../utils/adminauth.js';
+import { logout } from '../../services/authService.js';
 
 const navItems = [
   { label: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true },
@@ -24,10 +25,16 @@ const navItems = [
 
 function SidebarContent({ onNavigate }) {
   const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/admin/login', { replace: true });
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      navigate('/admin/login', { replace: true });
+    } catch {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -67,10 +74,11 @@ function SidebarContent({ onNavigate }) {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          disabled={isLoggingOut}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
         >
           <LogOut size={18} />
-          Logout
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
         </button>
       </div>
     </div>

@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Storage is initialized but not yet used anywhere in the app
+    // (product images are currently plain URL strings, not uploads).
+    // Fully locked down until an upload feature is built — revisit
+    // this file when that happens.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
