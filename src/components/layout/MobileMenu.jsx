@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Search, Heart, ShoppingBag } from 'lucide-react';
 
+import ThemeToggle from '../shared/ThemeToggle.jsx';
 import {
   selectIsMobileMenuOpen,
   closeMobileMenu,
@@ -51,17 +52,17 @@ function MobileMenu() {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="fixed inset-y-0 left-0 z-50 flex h-full w-[80%] max-w-xs flex-col bg-white shadow-2xl lg:hidden"
+            className="fixed inset-y-0 left-0 z-50 flex h-full w-[80%] max-w-xs flex-col bg-white shadow-2xl dark:bg-[#0b0b0f] lg:hidden"
           >
             <div className="flex items-center justify-between border-b border-[#e5e7eb] px-5 py-4">
-              <span className="text-base font-bold tracking-tight text-[#111827]">
+              <span className="text-base font-bold tracking-tight text-[#111827] dark:text-white">
                 ZERO WEAR <span className="text-[#2563eb]">DZ</span>
               </span>
               <button
                 type="button"
                 onClick={handleClose}
                 aria-label="Close menu"
-                className="flex items-center justify-center rounded-lg p-2 text-[#111827] transition-colors hover:bg-[#f9fafb]"
+                className="flex items-center justify-center rounded-lg p-2 text-[#111827] transition-colors hover:bg-[#f9fafb] dark:text-white dark:hover:bg-white/10"
               >
                 <X size={20} />
               </button>

@@ -22,21 +22,21 @@ function FeaturedProducts() {
   const isLoading = status === 'loading' && products.length === 0;
 
   return (
-    <section className="bg-[#f9fafb] py-16 sm:py-20 lg:py-24">
+    <section className="bg-[#f9fafb] py-16 transition-colors duration-300 dark:bg-[#090909] sm:py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 flex flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex flex-col gap-2 text-center sm:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">
+            <h2 className="text-3xl font-bold tracking-tight text-[#111827] dark:text-white sm:text-4xl">
               Featured Products
             </h2>
-            <p className="text-sm text-[#374151] sm:text-base">
+            <p className="text-sm text-[#6b7280] dark:text-white/70 sm:text-base">
               Hand-picked pieces from our latest collection.
             </p>
           </div>
 
           <Link
             to="/products"
-            className="group flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[#111827] transition-colors hover:text-[#2563eb]"
+            className="group flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[#111827] transition-colors hover:text-[#2563eb] dark:text-white dark:hover:text-[#60a5fa]"
           >
             View All
             <ArrowRight
@@ -67,7 +67,7 @@ function FeaturedProducts() {
             ))}
           </div>
         ) : (
-          <p className="py-10 text-center text-sm text-[#374151]">
+          <p className="py-10 text-center text-sm text-[#6b7280] dark:text-white/70">
             No featured products available right now.
           </p>
         )}

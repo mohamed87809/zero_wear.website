@@ -1,11 +1,11 @@
 // src/components/ui/Badge.jsx
 
 const variantStyles = {
-  default: 'bg-[#f9fafb] text-[#374151] border border-[#e5e7eb]',
-  success: 'bg-[#16a34a]/10 text-[#16a34a] border border-[#16a34a]/20',
-  accent: 'bg-[#2563eb]/10 text-[#2563eb] border border-[#2563eb]/20',
-  danger: 'bg-red-50 text-red-600 border border-red-200',
-  outline: 'bg-transparent text-[#111827] border border-[#e5e7eb]',
+  default: 'bg-[#f9fafb] text-[#374151] border border-[#e5e7eb] dark:bg-white/5 dark:text-white/50 dark:border-white/10',
+  success: 'bg-[#16a34a]/10 text-[#16a34a] border border-[#16a34a]/20 dark:bg-[#16a34a]/20 dark:text-[#16a34a]/10 dark:border-[#16a34a]/30',
+  accent: 'bg-[#2563eb]/10 text-[#2563eb] border border-[#2563eb]/20 dark:bg-[#2563eb]/20 dark:text-[#2563eb]/10 dark:border-[#2563eb]/30',
+  danger: 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-100 dark:text-red-600 dark:border-red-200',
+  outline: 'bg-transparent text-[#111827] border border-[#e5e7eb] dark:text-white/50 dark:border-white/10',
 };
 
 const sizeStyles = {

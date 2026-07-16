@@ -2,9 +2,9 @@
 
 export const products = [
   {
-    id: 'zw-001',
+    id: 'Birkenstock',
     name: 'Essential Oversized Tee',
-    category: 'T-Shirts',
+    category: 'Birkenstock',
     tags: ['bestseller', 'new'],
     price: 3800,
     oldPrice: 4500,
@@ -25,7 +25,7 @@ export const products = [
       freeShippingThreshold: 5000,
       returnPolicy: '14-day exchange',
     },
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    sizes: [39 , 40, 41, 42, 43, 44, 45],
     colors: [
       { name: 'Black', hex: '#111827' },
       { name: 'Stone', hex: '#78716c' },
@@ -40,7 +40,7 @@ export const products = [
   {
     id: 'zw-002',
     name: 'Minimal Track Jacket',
-    category: 'Jackets',
+    category: 'Sandals',
     tags: ['new'],
     price: 8900,
     oldPrice: null,
@@ -75,7 +75,7 @@ export const products = [
   {
     id: 'zw-003',
     name: 'Structured Cargo Pants',
-    category: 'Pants',
+    category: 'Crocs',
     tags: ['bestseller'],
     price: 6200,
     oldPrice: 7000,
@@ -110,7 +110,7 @@ export const products = [
   {
     id: 'zw-004',
     name: 'Premium Hooded Sweatshirt',
-    category: 'Hoodies',
+    category: 'BirkenStock',
     tags: ['bestseller', 'new'],
     price: 7400,
     oldPrice: null,
@@ -147,7 +147,7 @@ export const products = [
   {
     id: 'zw-005',
     name: 'Low-Profile Court Sneaker',
-    category: 'Footwear',
+    category: 'Sandals',
     tags: ['new'],
     price: 12500,
     oldPrice: 14000,
@@ -182,7 +182,7 @@ export const products = [
   {
     id: 'zw-006',
     name: 'Essential Cap',
-    category: 'Accessories',
+    category: 'Caps',
     tags: [],
     price: 2200,
     oldPrice: null,
@@ -216,10 +216,8 @@ export const products = [
 ];
 
 export const categories = [
-  { id: 'tshirts', name: 'T-Shirts', slug: 'T-Shirts' },
-  { id: 'jackets', name: 'Jackets', slug: 'Jackets' },
-  { id: 'pants', name: 'Pants', slug: 'Pants' },
-  { id: 'hoodies', name: 'Hoodies', slug: 'Hoodies' },
-  { id: 'footwear', name: 'Footwear', slug: 'Footwear' },
-  { id: 'accessories', name: 'Accessories', slug: 'Accessories' },
+  { id: 'birkenstock', name: 'Birkenstock', slug: 'Birkenstock' },
+  { id: 'sandals', name: 'Sandals', slug: 'Sandals' },
+  { id: 'crocs', name: 'Crocs', slug: 'Crocs' },
+  { id: 'caps', name: 'Caps', slug: 'Caps' },
 ];

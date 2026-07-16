@@ -2,8 +2,19 @@
 
 import { createSlice } from '@reduxjs/toolkit';
 
+const STORAGE_KEY = 'zw_wishlist';
+
+function loadPersistedWishlist() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
 const initialState = {
-  items: [], // { id, name, price, image }
+  items: loadPersistedWishlist(), // { id, name, price, image }
 };
 
 const wishlistSlice = createSlice({
@@ -32,11 +43,8 @@ const wishlistSlice = createSlice({
 export const { toggleWishlist, removeFromWishlist, clearWishlist } =
   wishlistSlice.actions;
 
-// Selectors
 export const selectWishlistItems = (state) => state.wishlist.items;
-
 export const selectWishlistCount = (state) => state.wishlist.items.length;
-
 export const selectIsInWishlist = (state, id) =>
   state.wishlist.items.some((item) => item.id === id);
 

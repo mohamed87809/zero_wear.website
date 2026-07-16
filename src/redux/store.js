@@ -17,3 +17,12 @@ export const store = configureStore({
     orders: ordersReducer,
   },
 });
+let previousWishlist = store.getState().wishlist.items;
+
+store.subscribe(() => {
+  const currentWishlist = store.getState().wishlist.items;
+  if (currentWishlist !== previousWishlist) {
+    previousWishlist = currentWishlist;
+    localStorage.setItem('zw_wishlist', JSON.stringify(currentWishlist));
+  }
+});

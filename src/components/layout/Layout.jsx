@@ -10,7 +10,7 @@ import ScrollTop from '../shared/ScrollTop.jsx';
 
 function Layout() {
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-white transition-colors duration-300 dark:bg-[#0b0b0f]">
       <AnnouncementBar />
       <Navbar />
       <MobileMenu />
