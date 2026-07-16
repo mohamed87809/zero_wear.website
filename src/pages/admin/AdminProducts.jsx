@@ -74,7 +74,7 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
-    console.log("HANDLE SUBMIT");
+    
 
     const payload = {
       name: form.name.trim(),
@@ -105,9 +105,8 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
           updateProductThunk({ id: editingProduct.id, updates: payload })
         ).unwrap();
       } else {
-        console.log("Before dispatch");
+       
         await dispatch(createProductThunk(payload)).unwrap();
-        console.log("after dispatch");
       }
       setIsSaving(false);
       onClose();
