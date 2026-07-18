@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {  Globe ,Send, CheckCircle2 } from 'lucide-react';
-
+ 
 import Hero from '../components/home/Hero.jsx';
 import Categories from '../components/home/Categories.jsx';
 import FeaturedProducts from '../components/home/FeaturedProducts.jsx';

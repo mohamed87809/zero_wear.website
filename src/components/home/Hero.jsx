@@ -1,5 +1,3 @@
-// src/components/home/Hero.jsx
-
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
@@ -8,79 +6,49 @@ import Button from '../ui/Button.jsx';
 
 function Hero() {
   return (
-    <section className="bg-[#f9fafb]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-28">
-        {/* Text content */}
-        <div className="flex flex-col gap-6">
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0 }}
-            className="text-xs font-semibold uppercase tracking-widest text-[#2563eb]"
-          >
-            New Season Collection
-          </motion.p>
+    <section className="relative h-[65vh] md:h-[75vh] overflow-hidden">
+      {/* Background Image */}
+      <img
+        src="/images/hero5.jpg"
+        alt="Zero Wear"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
 
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-5xl font-bold tracking-tight text-[#111827] sm:text-6xl lg:text-7xl"
-          >
-            Wear Less.
-            <br />
-            Mean More.
-          </motion.h1>
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="max-w-md text-base leading-relaxed text-[#374151] sm:text-lg"
-          >
-            Premium essentials designed with intention. Minimal silhouettes,
-            considered materials, built for everyday movement.
-          </motion.p>
-
+      {/* Content */}
+      <div className="relative z-10 flex h-full items-end">
+        <div className="mx-auto w-full max-w-7xl px-6 pb-12 md:px-8 md:pb-20">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 35 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="mt-2 flex flex-wrap items-center gap-4"
+            transition={{ duration: 0.7 }}
+            className="max-w-xl"
           >
-            <Link to="/products">
-              <Button variant="primary" size="lg" className="group">
-                Shop Collection
-                <ArrowRight
-                  size={18}
-                  className="transition-transform group-hover:translate-x-1"
-                />
-              </Button>
-            </Link>
+            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-7xl">
+              Walk
+              <br />
+              Different.
+            </h1>
 
-            <Link to="/about">
-              <Button variant="ghost" size="lg">
-                Learn More
-              </Button>
-            </Link>
+            <p className="mt-4 text-base text-white/85 sm:text-lg">
+              Premium Footwear & Essentials
+            </p>
+
+            <div className="mt-8">
+              <Link to="/products">
+                <Button size="lg" className="group">
+                  Shop Collection
+                  <ArrowRight
+                    size={18}
+                    className="transition-transform duration-300 group-hover:translate-x-1"
+                  />
+                </Button>
+              </Link>
+            </div>
           </motion.div>
         </div>
-
-        {/* Image */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.15 }}
-          className="relative order-first lg:order-last"
-        >
-          <div className="aspect-[4/5] w-full overflow-hidden rounded-3xl shadow-xl">
-            <img
-              src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1000"
-              alt="Zero Wear DZ premium collection"
-              className="h-full w-full object-cover"
-            />
-          </div>
-        </motion.div>
       </div>
     </section>
   );

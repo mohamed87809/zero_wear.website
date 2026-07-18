@@ -3,9 +3,9 @@ import { categories } from '../../data/products.js';
 
 const categoryImages = {
   Birkenstock: '/images/hero1.png',
-  Sandals: '/images/hero2.png',
-  Crocs: '/images/hero3.png',
-  Caps: '/images/hero4.png',
+  Sandals: '/images/hero4.png',
+  Crocs: '/images/hero2.png',
+  Caps: '/images/hero3.png',
 };
 
 function Categories() {
