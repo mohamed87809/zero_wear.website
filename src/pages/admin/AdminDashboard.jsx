@@ -174,7 +174,7 @@ function AdminDashboard() {
       )}
 
       {/* Recent orders */}
-      <Card padding="none" hoverEffect={false} className="overflow-hidden">
+      <Card padding="none" hoverEffect={false} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-[#e5e7eb] px-6 py-4">
           <h2 className="text-base font-semibold text-[#111827]">
             Recent Orders
@@ -197,9 +197,9 @@ function AdminDashboard() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="min-w-full bg-white text-left">
               <thead>
-                <tr className="border-b border-[#e5e7eb] text-xs font-semibold uppercase tracking-wide text-[#374151]/70">
+                <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase tracking-wide text-gray-500">
                   <th className="px-6 py-3">Order ID</th>
                   <th className="px-6 py-3">Customer</th>
                   <th className="px-6 py-3">Date</th>
@@ -211,7 +211,7 @@ function AdminDashboard() {
                 {recentOrders.map((order) => (
                   <tr
                     key={order.id}
-                    className="border-b border-[#e5e7eb] text-sm last:border-0"
+                    className="border-b border-gray-100 text-sm transition-colors hover:bg-gray-50 last:border-0"
                   >
                     <td className="px-6 py-4 font-medium text-[#111827]">
                       {order.id}

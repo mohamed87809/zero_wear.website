@@ -1,12 +1,7 @@
 // src/components/admin/ImageUploader.jsx
-//
-// Reusable image uploader for the Admin Dashboard's product form. Handles
-// multi-file selection, drag & drop, upload state, previews, deletion,
-// and reordering. Fully controlled — the parent owns the `images` array
-// (Firebase Storage download URLs) and receives updates via onChange.
 
-import { useRef, useState } from 'react';
-import { UploadCloud, X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { UploadCloud, X, ChevronUp, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 
 import {
   validateImageFile,
@@ -15,67 +10,112 @@ import {
 
 const MAX_IMAGES = 8;
 
+function makeId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * images: array of plain URL strings (Storage download URLs) — this is
+ * what the parent form stores and eventually saves to Firestore.
+ * Internally, this component tracks a richer per-file item list so each
+ * upload has its own independent status (uploading / done / error),
+ * which fixes the "one hang freezes everything" problem.
+ */
 function ImageUploader({ images, onChange, disabled = false }) {
   const inputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadingCount, setUploadingCount] = useState(0);
+  const [items, setItems] = useState(() =>
+    images.map((url) => ({ id: makeId(), url, previewUrl: url, status: 'done' }))
+  );
   const [error, setError] = useState('');
-  const recentUploadsRef = useRef(new Set()); // dedupe key: name+size
+  const recentUploadsRef = useRef(new Set());
 
-  const canAddMore = images.length < MAX_IMAGES;
+  // Keep internal items in sync if the parent resets `images` (e.g. when
+  // switching from Add to Edit, or Edit to a different product).
+  useEffect(() => {
+    setItems(
+      images.map((url) => ({ id: makeId(), url, previewUrl: url, status: 'done' }))
+    );
+    recentUploadsRef.current = new Set();
+  }, [images === items.map((i) => i.url) ? null : images.join('|')]); // eslint-disable-line
+
+  const doneCount = items.filter((i) => i.status !== 'error').length;
+  const canAddMore = doneCount < MAX_IMAGES;
+
+  // Whenever the "done" URLs change, tell the parent form.
+  const syncParent = (nextItems) => {
+    const urls = nextItems.filter((i) => i.status === 'done').map((i) => i.url);
+    onChange(urls);
+  };
+
+  const updateItem = (id, patch) => {
+    setItems((prev) => {
+      const next = prev.map((item) => (item.id === id ? { ...item, ...patch } : item));
+      syncParent(next);
+      return next;
+    });
+  };
 
   const handleFiles = async (fileList) => {
     setError('');
     const files = Array.from(fileList);
 
-    if (images.length + files.length > MAX_IMAGES) {
+    if (doneCount + files.length > MAX_IMAGES) {
       setError(`You can upload up to ${MAX_IMAGES} images per product.`);
     }
 
-    const room = Math.max(0, MAX_IMAGES - images.length);
+    const room = Math.max(0, MAX_IMAGES - doneCount);
     const filesToProcess = files.slice(0, room);
 
-    const validFiles = [];
+    const newItems = [];
+
     filesToProcess.forEach((file) => {
       const key = `${file.name}-${file.size}`;
       if (recentUploadsRef.current.has(key)) {
-        return; // skip exact duplicate selected/dropped twice
+        return; // duplicate selection, skip silently
       }
+
       const { valid, error: validationError } = validateImageFile(file);
       if (!valid) {
         setError(validationError);
         return;
       }
+
       recentUploadsRef.current.add(key);
-      validFiles.push(file);
+      newItems.push({
+        id: makeId(),
+        key,
+        file,
+        previewUrl: URL.createObjectURL(file), // instant local preview
+        url: null,
+        status: 'uploading',
+      });
     });
 
-    if (validFiles.length === 0) return;
+    if (newItems.length === 0) return;
 
-    setUploadingCount((prev) => prev + validFiles.length);
+    setItems((prev) => [...prev, ...newItems]);
 
-    const uploadedUrls = [];
-    for (const file of validFiles) {
-      try {
-        const url = await uploadProductImage(file);
-        uploadedUrls.push(url);
-      } catch {
-        setError('One or more images failed to upload. Please try again.');
-      }
-    }
-
-    setUploadingCount((prev) => prev - validFiles.length);
-
-    if (uploadedUrls.length > 0) {
-      onChange([...images, ...uploadedUrls]);
-    }
+    // Upload each file independently — one failing or hanging never
+    // blocks the others, and each thumbnail updates its own status.
+    newItems.forEach((item) => {
+      uploadProductImage(item.file)
+        .then((url) => {
+          updateItem(item.id, { url, status: 'done' });
+        })
+        .catch((err) => {
+          console.error('Image upload failed:', item.file.name, err);
+          updateItem(item.id, { status: 'error' });
+          recentUploadsRef.current.delete(item.key);
+        });
+    });
   };
 
   const handleInputChange = (e) => {
     if (e.target.files?.length) {
       handleFiles(e.target.files);
     }
-    e.target.value = ''; // allow re-selecting the same file later if needed
+    e.target.value = '';
   };
 
   const handleDrop = (e) => {
@@ -87,16 +127,39 @@ function ImageUploader({ images, onChange, disabled = false }) {
     }
   };
 
-  const handleRemove = (index) => {
-    onChange(images.filter((_, i) => i !== index));
+  const handleRemove = (id) => {
+    setItems((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      syncParent(next);
+      return next;
+    });
+  };
+
+  const handleRetry = (id) => {
+    setItems((prev) => {
+      const item = prev.find((i) => i.id === id);
+      if (!item?.file) return prev;
+
+      uploadProductImage(item.file)
+        .then((url) => updateItem(id, { url, status: 'done' }))
+        .catch((err) => {
+          console.error('Retry upload failed:', item.file.name, err);
+          updateItem(id, { status: 'error' });
+        });
+
+      return prev.map((i) => (i.id === id ? { ...i, status: 'uploading' } : i));
+    });
   };
 
   const handleMove = (index, direction) => {
     const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= images.length) return;
-    const updated = [...images];
-    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-    onChange(updated);
+    if (newIndex < 0 || newIndex >= items.length) return;
+    setItems((prev) => {
+      const next = [...prev];
+      [next[index], next[newIndex]] = [next[newIndex], next[index]];
+      syncParent(next);
+      return next;
+    });
   };
 
   return (
@@ -105,7 +168,6 @@ function ImageUploader({ images, onChange, disabled = false }) {
         Product Images
       </label>
 
-      {/* Drop zone */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -143,69 +205,85 @@ function ImageUploader({ images, onChange, disabled = false }) {
         />
       </div>
 
-      {error && <p className="text-xs font-medium text-red-500">{error}</p>}
+      {error && (
+        <p className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+          <AlertCircle size={13} />
+          {error}
+        </p>
+      )}
 
-      {/* Previews */}
-      {(images.length > 0 || uploadingCount > 0) && (
+      {items.length > 0 && (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-          {images.map((url, index) => (
+          {items.map((item, index) => (
             <div
-              key={url}
-              className="group relative aspect-square overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f9fafb] dark:border-white/10 dark:bg-white/5"
+              key={item.id}
+              className="relative aspect-square overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f9fafb] dark:border-white/10 dark:bg-white/5"
             >
               <img
-                src={url}
+                src={item.previewUrl}
                 alt={`Product image ${index + 1}`}
-                className="h-full w-full object-cover"
+                className={`h-full w-full object-cover ${
+                  item.status !== 'done' ? 'opacity-40' : ''
+                }`}
               />
 
-              {index === 0 && (
+              {item.status === 'uploading' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <Loader2 size={20} className="animate-spin text-white" />
+                </div>
+              )}
+
+              {item.status === 'error' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40 p-2 text-center">
+                  <AlertCircle size={18} className="text-red-400" />
+                  <button
+                    type="button"
+                    onClick={() => handleRetry(item.id)}
+                    className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-[#111827]"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {index === 0 && item.status === 'done' && (
                 <span className="absolute left-1.5 top-1.5 rounded-full bg-[#111827]/80 px-2 py-0.5 text-[10px] font-semibold text-white">
                   Main
                 </span>
               )}
 
+              {/* Always visible — not hover-only, so it works on touch devices */}
               <button
                 type="button"
-                onClick={() => handleRemove(index)}
+                onClick={() => handleRemove(item.id)}
                 aria-label="Remove image"
-                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-black/90"
               >
                 <X size={13} />
               </button>
 
-              <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                  type="button"
-                  onClick={() => handleMove(index, -1)}
-                  disabled={index === 0}
-                  aria-label="Move image earlier"
-                  className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-30"
-                >
-                  <ChevronUp size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleMove(index, 1)}
-                  disabled={index === images.length - 1}
-                  aria-label="Move image later"
-                  className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-30"
-                >
-                  <ChevronDown size={13} />
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {Array.from({ length: uploadingCount }).map((_, i) => (
-            <div
-              key={`uploading-${i}`}
-              className="flex aspect-square items-center justify-center rounded-lg border border-[#e5e7eb] bg-[#f9fafb] dark:border-white/10 dark:bg-white/5"
-            >
-              <Loader2
-                size={18}
-                className="animate-spin text-[#374151]/60 dark:text-white/50"
-              />
+              {item.status === 'done' && items.length > 1 && (
+                <div className="absolute bottom-1.5 right-1.5 flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleMove(index, -1)}
+                    disabled={index === 0}
+                    aria-label="Move image earlier"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white disabled:opacity-30"
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMove(index, 1)}
+                    disabled={index === items.length - 1}
+                    aria-label="Move image later"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white disabled:opacity-30"
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
