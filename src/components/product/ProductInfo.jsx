@@ -12,6 +12,7 @@ import {
   selectIsInWishlist,
 } from '../../redux/features/wishlistSlice.js';
 import { showToast } from '../../redux/features/uiSlice.js';
+import { getColorHex } from '../../utils/colorMap.js';
 
 function formatPrice(value, currency = 'DZD') {
   return `${value.toLocaleString('en-US')} ${currency}`;
@@ -31,7 +32,6 @@ function ProductInfo({ product }) {
   );
   const [quantity, setQuantity] = useState(1);
 
-  // Reset selections when navigating to a different product
   useEffect(() => {
     setSelectedSize(product.sizes?.[0]);
     setSelectedColor(product.colors?.[0]?.name);
@@ -40,6 +40,7 @@ function ProductInfo({ product }) {
 
   const isOutOfStock = product.stock === 0;
   const isLowStock = !isOutOfStock && product.stock <= 10;
+  const showStockInfo = product.showStock !== false;
   const hasDiscount = !!product.oldPrice && product.oldPrice > product.price;
   const discountPercent = hasDiscount
     ? Math.round(
@@ -120,14 +121,18 @@ function ProductInfo({ product }) {
         )}
       </div>
 
-      {/* Stock status */}
-      {isOutOfStock ? (
-        <p className="text-sm font-semibold text-red-600">Out of Stock</p>
-      ) : isLowStock ? (
-        <p className="text-sm font-semibold text-[#2563eb]">
-          Only {product.stock} left in stock
-        </p>
-      ) : null}
+      {/* Stock status — only shown if the admin enabled it for this product */}
+      {showStockInfo && (
+        <>
+          {isOutOfStock ? (
+            <p className="text-sm font-semibold text-red-600">Out of Stock</p>
+          ) : isLowStock ? (
+            <p className="text-sm font-semibold text-[#2563eb]">
+              Only {product.stock} left in stock
+            </p>
+          ) : null}
+        </>
+      )}
 
       {/* Size selector */}
       {product.sizes?.length > 0 && (
@@ -159,20 +164,26 @@ function ProductInfo({ product }) {
             Color — {selectedColor}
           </span>
           <div className="flex items-center gap-2">
-            {product.colors.map((color) => (
-              <button
-                key={color.name}
-                type="button"
-                onClick={() => setSelectedColor(color.name)}
-                aria-label={color.name}
-                style={{ backgroundColor: color.hex }}
-                className={`h-8 w-8 rounded-full border-2 transition-all ${
-                  selectedColor === color.name
-                    ? 'border-[#2563eb] ring-2 ring-[#2563eb]/30 ring-offset-2'
-                    : 'border-[#e5e7eb]'
-                }`}
-              />
-            ))}
+            {product.colors.map((color) => {
+              const hex = getColorHex(color.name);
+              const isWhite = hex.toLowerCase() === '#ffffff';
+              return (
+                <button
+                  key={color.name}
+                  type="button"
+                  onClick={() => setSelectedColor(color.name)}
+                  aria-label={color.name}
+                  style={{ backgroundColor: hex }}
+                  className={`h-8 w-8 rounded-full border-2 transition-all ${
+                    selectedColor === color.name
+                      ? 'border-[#2563eb] ring-2 ring-[#2563eb]/30 ring-offset-2'
+                      : isWhite
+                      ? 'border-[#d1d5db]'
+                      : 'border-[#e5e7eb]'
+                  }`}
+                />
+              );
+            })}
           </div>
         </div>
       )}

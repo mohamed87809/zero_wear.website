@@ -10,6 +10,7 @@ import Button from '../../components/ui/Button.jsx';
 import Input from '../../components/ui/Input.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import Loading, { Spinner } from '../../components/ui/Loading.jsx';
+import ImageUploader from '../../components/admin/ImageUploader.jsx';
 
 import {
   fetchProducts,
@@ -20,6 +21,7 @@ import {
   selectProductsStatus,
   selectProductsError,
 } from '../../redux/features/productsSlice.js';
+import { getColorHex } from '../../utils/colorMap.js';
 
 function formatPrice(value) {
   return `${(value || 0).toLocaleString('en-US')} DZD`;
@@ -34,7 +36,8 @@ const emptyFormState = {
   description: '',
   sizes: '',
   colors: '',
-  images: '',
+  images: [],
+  showStock: true,
 };
 
 function productToFormState(product) {
@@ -47,7 +50,8 @@ function productToFormState(product) {
     description: product.description || '',
     sizes: (product.sizes || []).join(', '),
     colors: (product.colors || []).map((c) => c.name || c).join(', '),
-    images: (product.images || []).join(', '),
+    images: product.images || [],
+    showStock: product.showStock !== false,
   };
 }
 
@@ -71,10 +75,18 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
+  const handleImagesChange = (newImages) => {
+    setForm((prev) => ({ ...prev, images: newImages }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
-    
+
+    if (form.images.length === 0) {
+      setFormError('Please upload at least one product image.');
+      return;
+    }
 
     const payload = {
       name: form.name.trim(),
@@ -91,12 +103,11 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
         .split(',')
         .map((c) => c.trim())
         .filter(Boolean)
-        .map((name) => ({ name, hex: '#111827' })),
-      images: form.images
-        .split(',')
-        .map((url) => url.trim())
-        .filter(Boolean),
+        .map((name) => ({ name, hex: getColorHex(name) })),
+      images: form.images,
+      showStock: form.showStock,
     };
+
     setIsSaving(true);
 
     try {
@@ -105,7 +116,6 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
           updateProductThunk({ id: editingProduct.id, updates: payload })
         ).unwrap();
       } else {
-       
         await dispatch(createProductThunk(payload)).unwrap();
       }
       setIsSaving(false);
@@ -124,8 +134,8 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
       onClose={onClose}
       title={editingProduct ? 'Edit Product' : 'Add Product'}
       maxWidth="lg"
-    ><form
-       onSubmit={handleSubmit} className="flex flex-col gap-4">
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
             label="Product Name"
@@ -185,17 +195,51 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
 
         <Input
           label="Colors (comma-separated)"
-          placeholder="Black, Grey, Navy"
+          placeholder="Beige, Taupe, Mocha, Black"
           value={form.colors}
           onChange={handleChange('colors')}
         />
 
-        <Input
-          label="Image URLs (comma-separated)"
-          placeholder="https://..., https://..."
-          value={form.images}
-          onChange={handleChange('images')}
+        <ImageUploader
+          key={editingProduct?.id || 'new'}
+          images={form.images}
+          onChange={handleImagesChange}
+          disabled={isSaving}
         />
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-[#111827] dark:text-white">
+            Show Stock Information on Product Page
+          </label>
+          <div className="inline-flex w-fit rounded-xl border border-[#e5e7eb] p-1 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setForm((prev) => ({ ...prev, showStock: true }))}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                form.showStock
+                  ? 'bg-[#111827] text-white'
+                  : 'text-[#374151] hover:bg-[#f9fafb] dark:text-white/70'
+              }`}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm((prev) => ({ ...prev, showStock: false }))}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                !form.showStock
+                  ? 'bg-[#111827] text-white'
+                  : 'text-[#374151] hover:bg-[#f9fafb] dark:text-white/70'
+              }`}
+            >
+              No
+            </button>
+          </div>
+          <p className="text-xs text-[#9ca3af]">
+            When disabled, no stock or "low stock" message will be shown to
+            customers on this product's page.
+          </p>
+        </div>
 
         {formError && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
@@ -203,13 +247,14 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
           </p>
         )}
 
-        <div className="mt-2 flex items-center gap-3">
+        <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button type="submit" variant="primary" fullWidth isLoading={isSaving}>
             {editingProduct ? 'Save Changes' : 'Add Product'}
           </Button>
           <Button
             type="button"
             variant="outline"
+            fullWidth
             onClick={onClose}
             disabled={isSaving}
           >
@@ -235,9 +280,6 @@ function AdminProducts() {
   const [actionError, setActionError] = useState('');
 
   useEffect(() => {
-    // Only fetch if we don't already have data (App.jsx also triggers this
-    // on initial app load) — avoids a redundant duplicate fetch if the
-    // admin navigates here after the storefront has already loaded products.
     if (status === 'idle') {
       dispatch(fetchProducts());
     }

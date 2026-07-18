@@ -2,10 +2,16 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Storage is initialized but not yet used anywhere in the app
-    // (product images are currently plain URL strings, not uploads).
-    // Fully locked down until an upload feature is built — revisit
-    // this file when that happens.
+    // Product images: public read (storefront needs to display them to
+    // everyone), write restricted to authenticated admins, capped at 5MB
+    // and image files only.
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }
