@@ -1,65 +1,66 @@
 // src/services/storageService.js
-//
-// Firebase Storage service for product image uploads. Used exclusively by
-// the Admin Dashboard's ImageUploader component. Follows the same
-// service-layer pattern as productsService.js / ordersService.js — plain
-// async functions, no UI or Redux concerns here.
 
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from 'firebase/storage';
-
-import { storage } from '../firebase/firebase.js';
-
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB, matches storage.rules
-
-function sanitizeFileName(name) {
-  return name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-}
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 /**
- * Validates a File before upload: must be an image, under the size limit.
+ * Validates a File before upload.
  */
 export function validateImageFile(file) {
   if (!file.type.startsWith('image/')) {
-    return { valid: false, error: `${file.name} is not an image file.` };
+    return {
+      valid: false,
+      error: `${file.name} is not an image file.`,
+    };
   }
+
   if (file.size > MAX_FILE_SIZE) {
-    return { valid: false, error: `${file.name} is larger than 5MB.` };
+    return {
+      valid: false,
+      error: `${file.name} is larger than 5MB.`,
+    };
   }
+
   return { valid: true };
 }
 
 /**
- * Uploads a single image file to Firebase Storage under /products and
- * returns its public download URL — the only thing saved into Firestore.
+ * Upload image to Cloudinary
  */
 export async function uploadProductImage(file) {
-  const uniqueName = `${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}-${sanitizeFileName(file.name)}`;
-  const imageRef = ref(storage, `products/${uniqueName}`);
+  const formData = new FormData();
 
-  await uploadBytes(imageRef, file);
-  return getDownloadURL(imageRef);
+  formData.append('file', file);
+
+  formData.append(
+    'upload_preset',
+    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+  );
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${
+      import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+    }/image/upload`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Image upload failed');
+  }
+
+  const data = await response.json();
+
+  return data.secure_url;
 }
 
 /**
- * Deletes a previously uploaded product image from Storage, given its
- * public download URL.
+ * Cloudinary deletion requires a backend because it needs your API Secret.
+ * For now we simply ignore deletes.
  */
-export async function deleteProductImage(url) {
-  try {
-    const imageRef = ref(storage, url);
-    await deleteObject(imageRef);
-  } catch (error) {
-    // Non-fatal — e.g. already deleted, or a legacy external URL that
-    // isn't actually a Storage object. Don't block the UI on this.
-    console.warn('Could not delete storage image:', error.message);
-  }
+export async function deleteProductImage() {
+  return;
 }
 
 export default {
