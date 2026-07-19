@@ -60,6 +60,7 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
 
   const [form, setForm] = useState(emptyFormState);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImagesUploading, setIsImagesUploading] = useState(false);
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
@@ -68,6 +69,7 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
         editingProduct ? productToFormState(editingProduct) : emptyFormState
       );
       setFormError('');
+      setIsImagesUploading(false);
     }
   }, [isOpen, editingProduct]);
 
@@ -82,6 +84,11 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+
+    if (isImagesUploading) {
+      setFormError('Please wait for all images to finish uploading.');
+      return;
+    }
 
     if (form.images.length === 0) {
       setFormError('Please upload at least one product image.');
@@ -204,6 +211,7 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
           key={editingProduct?.id || 'new'}
           images={form.images}
           onChange={handleImagesChange}
+          onUploadingChange={setIsImagesUploading}
           disabled={isSaving}
         />
 
@@ -248,8 +256,18 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
         )}
 
         <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button type="submit" variant="primary" fullWidth isLoading={isSaving}>
-            {editingProduct ? 'Save Changes' : 'Add Product'}
+          <Button
+            type="submit"
+            variant="primary"
+            fullWidth
+            isLoading={isSaving}
+            disabled={isImagesUploading}
+          >
+            {isImagesUploading
+              ? 'Uploading images...'
+              : editingProduct
+              ? 'Save Changes'
+              : 'Add Product'}
           </Button>
           <Button
             type="button"
@@ -265,7 +283,6 @@ function ProductFormModal({ isOpen, onClose, editingProduct }) {
     </Modal>
   );
 }
-
 function AdminProducts() {
   const dispatch = useDispatch();
   const products = useSelector(selectAllProducts);

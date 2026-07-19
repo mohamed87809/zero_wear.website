@@ -14,49 +14,49 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/**
- * images: array of plain URL strings (Storage download URLs) — this is
- * what the parent form stores and eventually saves to Firestore.
- * Internally, this component tracks a richer per-file item list so each
- * upload has its own independent status (uploading / done / error),
- * which fixes the "one hang freezes everything" problem.
- */
-function ImageUploader({ images, onChange, disabled = false }) {
+function ImageUploader({ images, onChange, onUploadingChange, disabled = false }) {
   const inputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Seeded once from the initial `images` prop. No effect re-syncs this
+  // from the parent afterward — the parent remounts this component via a
+  // `key` prop whenever it needs fresh state (switching Add/Edit), so
+  // re-syncing here was unnecessary and was the source of the bug: it
+  // wiped out other in-flight uploads every time one image finished.
   const [items, setItems] = useState(() =>
     images.map((url) => ({ id: makeId(), url, previewUrl: url, status: 'done' }))
   );
   const [error, setError] = useState('');
   const recentUploadsRef = useRef(new Set());
 
-  // Keep internal items in sync if the parent resets `images` (e.g. when
-  // switching from Add to Edit, or Edit to a different product).
+  const doneCount = items.filter((i) => i.status === 'done').length;
+  const isUploading = items.some((i) => i.status === 'uploading');
+  const canAddMore = items.length < MAX_IMAGES;
+
+  // Notify the parent whenever the set of successfully uploaded URLs
+  // actually changes — kept in its own effect (not inside setItems)
+  // so it can't interfere with the uploader's own state updates.
+  const lastSyncedRef = useRef('');
   useEffect(() => {
-    setItems(
-      images.map((url) => ({ id: makeId(), url, previewUrl: url, status: 'done' }))
-    );
-    recentUploadsRef.current = new Set();
-  }, [images === items.map((i) => i.url) ? null : images.join('|')]); // eslint-disable-line
+    const urls = items.filter((i) => i.status === 'done').map((i) => i.url);
+    const joined = urls.join('|');
+    if (joined !== lastSyncedRef.current) {
+      lastSyncedRef.current = joined;
+      onChange(urls);
+    }
+  }, [items, onChange]);
 
-  const doneCount = items.filter((i) => i.status !== 'error').length;
-  const canAddMore = doneCount < MAX_IMAGES;
-
-  // Whenever the "done" URLs change, tell the parent form.
-  const syncParent = (nextItems) => {
-    const urls = nextItems.filter((i) => i.status === 'done').map((i) => i.url);
-    onChange(urls);
-  };
+  // Let the parent know if an upload is still in progress, so it can
+  // disable the Save button instead of relying on a stale image count.
+  useEffect(() => {
+    onUploadingChange?.(isUploading);
+  }, [isUploading, onUploadingChange]);
 
   const updateItem = (id, patch) => {
-    setItems((prev) => {
-      const next = prev.map((item) => (item.id === id ? { ...item, ...patch } : item));
-      syncParent(next);
-      return next;
-    });
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   };
 
-  const handleFiles = async (fileList) => {
+  const handleFiles = (fileList) => {
     setError('');
     const files = Array.from(fileList);
 
@@ -64,16 +64,13 @@ function ImageUploader({ images, onChange, disabled = false }) {
       setError(`You can upload up to ${MAX_IMAGES} images per product.`);
     }
 
-    const room = Math.max(0, MAX_IMAGES - doneCount);
+    const room = Math.max(0, MAX_IMAGES - items.length);
     const filesToProcess = files.slice(0, room);
-
     const newItems = [];
 
     filesToProcess.forEach((file) => {
       const key = `${file.name}-${file.size}`;
-      if (recentUploadsRef.current.has(key)) {
-        return; // duplicate selection, skip silently
-      }
+      if (recentUploadsRef.current.has(key)) return;
 
       const { valid, error: validationError } = validateImageFile(file);
       if (!valid) {
@@ -86,7 +83,7 @@ function ImageUploader({ images, onChange, disabled = false }) {
         id: makeId(),
         key,
         file,
-        previewUrl: URL.createObjectURL(file), // instant local preview
+        previewUrl: URL.createObjectURL(file),
         url: null,
         status: 'uploading',
       });
@@ -96,13 +93,9 @@ function ImageUploader({ images, onChange, disabled = false }) {
 
     setItems((prev) => [...prev, ...newItems]);
 
-    // Upload each file independently — one failing or hanging never
-    // blocks the others, and each thumbnail updates its own status.
     newItems.forEach((item) => {
       uploadProductImage(item.file)
-        .then((url) => {
-          updateItem(item.id, { url, status: 'done' });
-        })
+        .then((url) => updateItem(item.id, { url, status: 'done' }))
         .catch((err) => {
           console.error('Image upload failed:', item.file.name, err);
           updateItem(item.id, { status: 'error' });
@@ -112,9 +105,7 @@ function ImageUploader({ images, onChange, disabled = false }) {
   };
 
   const handleInputChange = (e) => {
-    if (e.target.files?.length) {
-      handleFiles(e.target.files);
-    }
+    if (e.target.files?.length) handleFiles(e.target.files);
     e.target.value = '';
   };
 
@@ -122,33 +113,27 @@ function ImageUploader({ images, onChange, disabled = false }) {
     e.preventDefault();
     setIsDragging(false);
     if (disabled) return;
-    if (e.dataTransfer.files?.length) {
-      handleFiles(e.dataTransfer.files);
-    }
+    if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
   };
 
   const handleRemove = (id) => {
-    setItems((prev) => {
-      const next = prev.filter((item) => item.id !== id);
-      syncParent(next);
-      return next;
-    });
+    setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleRetry = (id) => {
-    setItems((prev) => {
-      const item = prev.find((i) => i.id === id);
-      if (!item?.file) return prev;
+    const item = items.find((i) => i.id === id);
+    if (!item?.file) return;
 
-      uploadProductImage(item.file)
-        .then((url) => updateItem(id, { url, status: 'done' }))
-        .catch((err) => {
-          console.error('Retry upload failed:', item.file.name, err);
-          updateItem(id, { status: 'error' });
-        });
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, status: 'uploading' } : i))
+    );
 
-      return prev.map((i) => (i.id === id ? { ...i, status: 'uploading' } : i));
-    });
+    uploadProductImage(item.file)
+      .then((url) => updateItem(id, { url, status: 'done' }))
+      .catch((err) => {
+        console.error('Retry upload failed:', item.file.name, err);
+        updateItem(id, { status: 'error' });
+      });
   };
 
   const handleMove = (index, direction) => {
@@ -157,7 +142,6 @@ function ImageUploader({ images, onChange, disabled = false }) {
     setItems((prev) => {
       const next = [...prev];
       [next[index], next[newIndex]] = [next[newIndex], next[index]];
-      syncParent(next);
       return next;
     });
   };
@@ -186,14 +170,11 @@ function ImageUploader({ images, onChange, disabled = false }) {
       >
         <UploadCloud size={22} className="text-[#374151]/60 dark:text-white/50" />
         <p className="text-sm font-medium text-[#111827] dark:text-white">
-          {canAddMore
-            ? 'Click or drag images here to upload'
-            : `Maximum ${MAX_IMAGES} images reached`}
+          {canAddMore ? 'Click or drag images here to upload' : `Maximum ${MAX_IMAGES} images reached`}
         </p>
         <p className="text-xs text-[#9ca3af] dark:text-white/50">
           PNG, JPG, or WEBP — up to 5MB each
         </p>
-
         <input
           ref={inputRef}
           type="file"
@@ -212,6 +193,13 @@ function ImageUploader({ images, onChange, disabled = false }) {
         </p>
       )}
 
+      {isUploading && (
+        <p className="flex items-center gap-1.5 text-xs font-medium text-[#2563eb]">
+          <Loader2 size={13} className="animate-spin" />
+          Uploading images... please wait before saving.
+        </p>
+      )}
+
       {items.length > 0 && (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {items.map((item, index) => (
@@ -222,9 +210,7 @@ function ImageUploader({ images, onChange, disabled = false }) {
               <img
                 src={item.previewUrl}
                 alt={`Product image ${index + 1}`}
-                className={`h-full w-full object-cover ${
-                  item.status !== 'done' ? 'opacity-40' : ''
-                }`}
+                className={`h-full w-full object-cover ${item.status !== 'done' ? 'opacity-40' : ''}`}
               />
 
               {item.status === 'uploading' && (
@@ -252,7 +238,6 @@ function ImageUploader({ images, onChange, disabled = false }) {
                 </span>
               )}
 
-              {/* Always visible — not hover-only, so it works on touch devices */}
               <button
                 type="button"
                 onClick={() => handleRemove(item.id)}
